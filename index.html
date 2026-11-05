@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>The Big Call</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📞</text></svg>">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#17112e;--panel:#241a47;--line:#3a2d6b;--pink:#ff5c8a;--mint:#4be3c1;--sun:#ffd24a;--tx:#f4f0ff}
+*{box-sizing:border-box}html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--tx);font-family:'Bricolage Grotesque',system-ui,sans-serif;overflow:hidden}
+button{font:inherit;color:inherit;cursor:pointer;border:0}
+button:focus-visible,input:focus-visible{outline:3px solid var(--mint);outline-offset:2px}
+#lobby{height:100%;display:grid;place-content:center;justify-items:center;gap:18px;text-align:center;padding:24px}
+#lobby h1{font-size:clamp(44px,10vw,110px);margin:0;line-height:.9;letter-spacing:-.04em;font-weight:800}
+#lobby h1 span{color:var(--pink)}
+#lobby p{margin:0;opacity:.8;font-size:18px}
+#name{font:inherit;font-size:20px;padding:14px 18px;border-radius:14px;border:2px solid var(--line);background:var(--panel);color:var(--tx);width:min(320px,90vw);text-align:center}
+#join{background:var(--pink);color:#17112e;font-weight:800;font-size:22px;padding:16px 44px;border-radius:16px;transition:transform .15s}
+#join:hover{transform:scale(1.05)}#join:disabled{opacity:.5}
+#call{display:none;height:100%}
+#main{flex:1;display:flex;flex-direction:column;min-width:0}
+#top{height:42px;display:flex;align-items:center;justify-content:space-between;padding:0 14px;font-weight:700}
+#grid{flex:1;display:flex;flex-wrap:wrap;gap:8px;justify-content:center;align-content:center;padding:8px;min-height:0;transition:transform .6s}
+.tile{width:var(--tw,200px);height:var(--th,150px);position:relative;border-radius:14px;overflow:hidden;background:#2b2058;border:2px solid var(--line);transition:width .4s,height .4s,transform .8s}
+.tile.owner{border-color:var(--sun)}.tile.me{border-color:var(--mint)}
+.tile video{width:100%;height:100%;object-fit:cover;display:block}.tile.me video{transform:scaleX(-1)}
+.ph{position:absolute;inset:0;display:none;place-items:center;background:#2b2058;font-weight:800;font-size:calc(var(--th,150px)*.4);color:var(--pink)}
+.tile.nocam .ph{display:grid}
+.nm{position:absolute;left:6px;bottom:6px;max-width:calc(100% - 12px);background:#17112ecc;padding:2px 8px;border-radius:8px;font-size:clamp(10px,calc(var(--th,150px)*.09),15px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#bar{display:flex;justify-content:center;gap:10px;padding:10px;flex-wrap:wrap;position:relative}
+#bar button{background:var(--panel);border-radius:14px;padding:12px 16px;font-size:18px;border:2px solid var(--line)}
+#bar button.off{background:var(--pink);color:#17112e;border-color:var(--pink)}
+#bar button.on{background:var(--mint);color:#17112e;border-color:var(--mint)}
+#bar #leave{background:#ff3b3b;border-color:#ff3b3b}
+#bar #adminBtn{display:none;background:var(--sun);color:#17112e;border-color:var(--sun);font-weight:800}
+#emojis{display:none;position:absolute;bottom:68px;background:var(--panel);padding:8px;border-radius:14px;border:2px solid var(--line);gap:4px}
+#emojis.open{display:flex}#emojis button{border:0;background:none;padding:6px;font-size:26px}
+.drawer{display:none;width:330px;background:var(--panel);border-left:2px solid var(--line);flex-direction:column;padding:12px;gap:8px;overflow:hidden}
+.drawer.open{display:flex}.drawer h3{margin:0}
+#msgs{flex:1;overflow:auto;display:flex;flex-direction:column;gap:6px;font-size:15px;word-break:break-word}
+#msgs b{color:var(--mint)}#msgs .sys{color:var(--sun)}
+.drawer input{font:inherit;padding:10px;border-radius:10px;border:2px solid var(--line);background:var(--bg);color:var(--tx);width:100%}
+#adminBody{overflow:auto;display:flex;flex-direction:column;gap:10px}
+.row{display:flex;flex-wrap:wrap;gap:6px}.row button{background:var(--bg);border:2px solid var(--line);border-radius:10px;padding:6px 10px;font-size:14px}
+.row button:hover{border-color:var(--pink)}
+.urow{display:flex;align-items:center;gap:4px;justify-content:space-between;background:var(--bg);border-radius:10px;padding:6px 8px;font-size:14px}
+.urow span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}.urow button{background:none;font-size:17px;padding:2px 4px}
+#banner{position:fixed;top:60px;left:50%;transform:translateX(-50%);background:var(--sun);color:#17112e;font-weight:800;font-size:clamp(20px,4vw,40px);padding:14px 28px;border-radius:18px;z-index:50;display:none;text-align:center;max-width:90vw}
+.toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:var(--panel);border:2px solid var(--pink);padding:10px 18px;border-radius:12px;z-index:60}
+.fall,.float{position:fixed;z-index:40;pointer-events:none;top:-40px}
+.fall{animation:fall linear forwards}.float{top:auto;bottom:70px;animation:rise 2.2s ease-out forwards;font-size:40px}
+@keyframes fall{to{transform:translateY(110vh) rotate(540deg)}}
+@keyframes rise{to{transform:translateY(-70vh) scale(1.6);opacity:0}}
+@keyframes shake{0%,100%{transform:none}20%{transform:translate(-14px,8px) rotate(-1deg)}40%{transform:translate(12px,-10px) rotate(1deg)}60%{transform:translate(-10px,-6px)}80%{transform:translate(10px,8px)}}
+@keyframes disco{to{filter:hue-rotate(360deg)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+body.shake #main{animation:shake .5s 4}body.disco #grid{animation:disco 1.5s linear infinite}
+body.spin .tile{animation:spin 1.2s ease-in-out}body.flip #grid{transform:rotate(180deg)}
+@media(max-width:700px){.drawer{position:fixed;inset:42px 0 0 auto;width:min(330px,100%);z-index:30}}
+@media(prefers-reduced-motion:reduce){body.shake #main,body.disco #grid,body.spin .tile{animation:none}}
+</style></head><body>
+
+<div id="lobby">
+  <h1>The Big<br><span>Call</span></h1>
+  <p id="status">Up to 50 people on one screen.</p>
+  <input id="name" maxlength="20" placeholder="Your name" autocomplete="off">
+  <button id="join">Join the call</button>
+</div>
+
+<div id="call">
+  <div id="main">
+    <div id="top"><span>📞 The Big Call</span><span id="count"></span></div>
+    <div id="grid"></div>
+    <div id="bar">
+      <button id="mic" title="Mic">🎙️</button><button id="cam" title="Camera">📷</button>
+      <button id="react" title="Reactions">😂</button><button id="pirateBtn" title="Pirate filter">🏴‍☠️</button><button id="chatBtn" title="Chat">💬</button>
+      <button id="adminBtn">👑 Admin</button><button id="leave">Leave</button>
+      <div id="emojis"></div>
+    </div>
+  </div>
+  <div class="drawer" id="chat"><h3>Chat</h3><div id="msgs"></div>
+    <input id="msg" maxlength="300" placeholder="Type… or /roll /coin /shrug"></div>
+  <div class="drawer" id="admin"><h3>👑 Admin panel</h3><div id="adminBody"></div></div>
+</div>
+<div id="banner"></div>
+
+<script>
+const $=s=>document.querySelector(s);
+let ws,me,owner,users=[],locked=false,local=null,left=false;
+const peers=new Map();let myTile;
+const ICE={iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun1.l.google.com:19302'}]};
+const send=m=>ws&&ws.readyState===1&&ws.send(JSON.stringify(m));
+const track=k=>local&&local.getTracks().find(t=>t.kind===k);
+const meUser=()=>users.find(u=>u.id===me)||{};
+const amOwner=()=>me&&owner===me;
+
+fetch('/status').then(r=>r.json()).then(s=>{$('#status').textContent=s.count?`${s.count}/${s.max} in the call right now${s.locked?' (locked)':''}`:'Nobody here yet. Be the first and you become the owner.'}).catch(()=>{});
+
+$('#join').onclick=async()=>{
+  $('#join').disabled=true;
+  const name=($('#name').value.trim()||'Player').slice(0,20);
+  try{local=await navigator.mediaDevices.getUserMedia({audio:true,video:{width:{ideal:640},height:{ideal:480},frameRate:{ideal:24}}})}
+  catch{try{local=await navigator.mediaDevices.getUserMedia({audio:true})}catch{local=new MediaStream()}}
+  ws=new WebSocket((location.protocol==='https:'?'wss://':'ws://')+location.host);
+  ws.onopen=()=>send({t:'join',name});
+  ws.onmessage=e=>on(JSON.parse(e.data));
+  ws.onclose=()=>{if(!left){toast('Disconnected. Reloading…');setTimeout(()=>location.reload(),1500)}};
+};
+$('#name').addEventListener('keydown',e=>e.key==='Enter'&&$('#join').click());
+
+function on(m){
+  switch(m.t){
+  case 'denied': left=true;alert(m.why);location.reload();break;
+  case 'welcome':
+    me=m.id;$('#lobby').style.display='none';$('#call').style.display='flex';
+    myTile=tile(true);myTile.v.srcObject=local;myTile.v.muted=true;
+    m.peers.forEach(id=>call(id));layout();listen();setTimeout(loadDetector,3000);break;
+  case 'roster': roster(m);break;
+  case 'sig': sig(m.from,m.d);break;
+  case 'chat': addMsg(m.name,m.text);break;
+  case 'clear': $('#msgs').innerHTML='';break;
+  case 'react': floatEmoji(m.e);break;
+  case 'ann': banner(m.text);break;
+  case 'fx': fx(m.n,m.a);break;
+  case 'kicked': left=true;alert('You were kicked from the call.');location.reload();break;
+  }
+}
+
+/* ---------- WebRTC (mesh) ---------- */
+function getPeer(id){
+  if(peers.has(id))return peers.get(id);
+  const pc=new RTCPeerConnection(ICE),p={pc,q:Promise.resolve(),el:tile(false)};
+  pc.onicecandidate=e=>e.candidate&&send({t:'sig',to:id,d:{c:e.candidate}});
+  pc.ontrack=e=>{p.el.v.srcObject=e.streams[0]};
+  pc.onconnectionstatechange=()=>{if(pc.connectionState==='connected')tune()};
+  peers.set(id,p);layout();return p;
+}
+function addLocal(pc,answering){
+  ['audio','video'].forEach(k=>{const t=(k==='video'&&pirate.on)?pirate.out:track(k);
+    if(t)pc.addTrack(t,local);else if(!answering)pc.addTransceiver(k,{direction:'recvonly'})});
+}
+async function call(id){
+  const p=getPeer(id);addLocal(p.pc);
+  await p.pc.setLocalDescription(await p.pc.createOffer());
+  send({t:'sig',to:id,d:{s:p.pc.localDescription}});
+}
+function sig(from,d){
+  const p=getPeer(from);
+  p.q=p.q.then(async()=>{
+    if(d.s){
+      await p.pc.setRemoteDescription(d.s);
+      if(d.s.type==='offer'){addLocal(p.pc,true);await p.pc.setLocalDescription(await p.pc.createAnswer());send({t:'sig',to:from,d:{s:p.pc.localDescription}})}
+    }else if(d.c){try{await p.pc.addIceCandidate(d.c)}catch{}}
+  }).catch(console.error);
+}
+/* shrink video bitrate/resolution as the call gets bigger so everyone fits */
+function tune(){
+  const n=users.length,br=n<=4?1200e3:n<=9?600e3:n<=20?250e3:n<=35?120e3:60e3,sc=n<=9?1:n<=20?2:n<=35?3:4;
+  peers.forEach(({pc})=>pc.getSenders().forEach(s=>{
+    if(!s.track||s.track.kind!=='video')return;
+    const pr=s.getParameters();if(!pr.encodings||!pr.encodings.length)pr.encodings=[{}];
+    pr.encodings[0].maxBitrate=br;pr.encodings[0].scaleResolutionDownBy=sc;
+    s.setParameters(pr).catch(()=>{});
+  }));
+}
+
+/* ---------- tiles + layout ---------- */
+function tile(isMe){
+  const el=document.createElement('div');el.className='tile'+(isMe?' me':'');
+  el.innerHTML='<video autoplay playsinline></video><div class="ph"></div><div class="nm"></div>';
+  el.v=el.querySelector('video');el.ph=el.querySelector('.ph');el.nm=el.querySelector('.nm');
+  $('#grid').appendChild(el);return el;
+}
+function layout(){
+  const g=$('#grid'),n=g.children.length;if(!n)return;
+  const W=g.clientWidth-16,H=g.clientHeight-16,gap=8;let best=60;
+  for(let c=1;c<=n;c++){const r=Math.ceil(n/c),w=(W-gap*(c-1))/c,h=(H-gap*(r-1))/r;best=Math.max(best,Math.min(w,h*4/3))}
+  g.style.setProperty('--tw',Math.floor(best)+'px');g.style.setProperty('--th',Math.floor(best*.75)+'px');
+}
+new ResizeObserver(layout).observe($('#grid'));
+
+function roster(m){
+  users=m.users;owner=m.owner;locked=m.locked;
+  const ids=new Set(users.map(u=>u.id));
+  peers.forEach((p,id)=>{if(!ids.has(id)){p.pc.close();p.el.remove();peers.delete(id)}});
+  const mu=meUser();
+  ['audio','video'].forEach(k=>{const t=track(k),lk=k==='audio'?mu.micLocked:mu.camLocked;if(t&&lk)t.enabled=false});
+  users.forEach(u=>{
+    const el=u.id===me?myTile:(peers.get(u.id)||{}).el;if(!el)return;
+    const cam=u.id===me?(track('video')?.enabled&&!u.camLocked):u.cam;
+    el.classList.toggle('nocam',!cam);el.classList.toggle('owner',u.id===owner);
+    el.ph.textContent=(u.name[0]||'?').toUpperCase();
+    el.nm.textContent=(u.id===owner?'👑 ':'')+u.name+(u.id===me?' (you)':'')+(u.mic?'':' 🔇');
+  });
+  $('#count').textContent=`${users.length}/50 in the call${locked?' 🔒':''}`;
+  $('#mic').classList.toggle('off',!(track('audio')?.enabled));$('#cam').classList.toggle('off',!(track('video')?.enabled));
+  $('#adminBtn').style.display=amOwner()?'block':'none';
+  if(!amOwner())$('#admin').classList.remove('open');
+  renderAdmin();layout();tune();
+}
+function pushState(){send({t:'state',mic:!!track('audio')?.enabled,cam:!!track('video')?.enabled})}
+$('#mic').onclick=()=>{const t=track('audio');if(!t)return toast('No mic available');if(meUser().micLocked)return toast('The owner muted you 🤐');t.enabled=!t.enabled;pushState();roster({users,owner,locked})};
+$('#cam').onclick=()=>{const t=track('video');if(!t)return toast('No camera available');if(meUser().camLocked)return toast('The owner turned your camera off 🙈');t.enabled=!t.enabled;pushState();roster({users,owner,locked})};
+$('#leave').onclick=()=>{left=true;ws.close();local.getTracks().forEach(t=>t.stop());location.reload()};
+
+/* ---------- chat, reactions, drawers ---------- */
+$('#chatBtn').onclick=()=>{$('#chat').classList.toggle('open');layout()};
+$('#adminBtn').onclick=()=>{$('#admin').classList.toggle('open');layout()};
+function addMsg(name,text){const d=document.createElement('div');const b=document.createElement('b');b.textContent=name+': ';d.append(b,text);$('#msgs').appendChild(d);$('#msgs').scrollTop=1e9}
+const ownerCmds={pirate:1,confetti:1,shake:1,disco:1,spin:1,flip:1,party:1,rain:1};
+$('#msg').addEventListener('keydown',e=>{
+  if(e.key!=='Enter')return;const text=e.target.value.trim();e.target.value='';if(!text)return;
+  if(text[0]!=='/')return send({t:'chat',text});
+  const [cmd,...rest]=text.slice(1).split(' '),arg=rest.join(' '),nm=meUser().name;
+  if(cmd==='roll')send({t:'chat',text:`🎲 rolled ${1+Math.floor(Math.random()*100)} (1-100)`});
+  else if(cmd==='coin')send({t:'chat',text:`🪙 flipped ${Math.random()<.5?'heads':'tails'}`});
+  else if(cmd==='shrug')send({t:'chat',text:'¯\\_(ツ)_/¯'});
+  else if(cmd==='me')send({t:'chat',text:`*${arg||'does a thing'}*`});
+  else if(amOwner()&&ownerCmds[cmd])send({t:'fx',n:cmd,a:arg});
+  else if(amOwner()&&cmd==='announce')send({t:'announce',text:arg});
+  else if(amOwner()&&cmd==='muteall')send({t:'lockall',what:'mic',on:true});
+  else if(amOwner()&&cmd==='unmuteall')send({t:'lockall',what:'mic',on:false});
+  else if(amOwner()&&cmd==='lock')send({t:'room',on:true});
+  else if(amOwner()&&cmd==='unlock')send({t:'room',on:false});
+  else if(amOwner()&&cmd==='clear')send({t:'clear'});
+  else toast(amOwner()?'Unknown command':'Unknown command (owner-only commands need the crown)');
+});
+['😂','❤️','🔥','👏','😮','🎉'].forEach(e=>{const b=document.createElement('button');b.textContent=e;b.onclick=()=>{send({t:'react',e});$('#emojis').classList.remove('open')};$('#emojis').appendChild(b)});
+$('#react').onclick=()=>$('#emojis').classList.toggle('open');
+function floatEmoji(e){const s=document.createElement('div');s.className='float';s.textContent=e;s.style.left=10+Math.random()*80+'vw';document.body.appendChild(s);setTimeout(()=>s.remove(),2300)}
+
+/* ---------- admin panel ---------- */
+function renderAdmin(){
+  if(!amOwner()){$('#adminBody').innerHTML='';return}
+  const B=(a,l,x='')=>`<button data-a="${a}" ${x}>${l}</button>`;
+  $('#adminBody').innerHTML=
+   `<div class="row">${B('muteall','🔇 Mute all')}${B('unmuteall','🎙 Release mics')}${B('camsoff','🙈 Cams off')}${B('camson','📷 Release cams')}${B('lock',locked?'🔓 Unlock call':'🔒 Lock call')}${B('clear','🧹 Clear chat')}</div>
+    <b>Chaos buttons</b>
+    <div class="row">${B('fx','🎉 Confetti','data-n="confetti"')}${B('fx','🪩 Disco','data-n="disco"')}${B('fx','🫨 Shake','data-n="shake"')}${B('fx','🌀 Spin','data-n="spin"')}${B('fx','🙃 Flip','data-n="flip"')}${B('fx','🥳 Party','data-n="party"')}${B('fx','🏴‍☠️ Pirate everyone','data-n="pirate"')}${B('fx','🍕 Pizza rain','data-n="rain" data-arg="🍕"')}</div>
+    <input id="ann" maxlength="140" placeholder="Announce to everyone…">
+    <b>Players</b>
+    ${users.filter(u=>u.id!==me).map(u=>`<div class="urow"><span>${esc(u.name)}</span>
+      <button data-a="mic" data-id="${u.id}" title="${u.micLocked?'Release mic':'Mute'}">${u.micLocked?'🎙':'🔇'}</button>
+      <button data-a="cam" data-id="${u.id}" title="${u.camLocked?'Release cam':'Cam off'}">${u.camLocked?'📷':'🙈'}</button>
+      <button data-a="rename" data-id="${u.id}" title="Rename">✏️</button>
+      <button data-a="crown" data-id="${u.id}" title="Make owner">👑</button>
+      <button data-a="kick" data-id="${u.id}" title="Kick">🚫</button></div>`).join('')||'<i>Waiting for players…</i>'}
+    <small>Chat commands: /confetti /disco /shake /spin /flip /party /pirate /rain 🍕 /announce hi /muteall /lock /clear</small>`;
+}
+const esc=s=>s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+$('#adminBody').addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b)return;const a=b.dataset.a,id=+b.dataset.id,u=users.find(x=>x.id===id)||{};
+  if(a==='muteall')send({t:'lockall',what:'mic',on:true});
+  else if(a==='unmuteall')send({t:'lockall',what:'mic',on:false});
+  else if(a==='camsoff')send({t:'lockall',what:'cam',on:true});
+  else if(a==='camson')send({t:'lockall',what:'cam',on:false});
+  else if(a==='lock')send({t:'room',on:!locked});
+  else if(a==='clear')send({t:'clear'});
+  else if(a==='fx')send({t:'fx',n:b.dataset.n,a:b.dataset.arg||''});
+  else if(a==='mic')send({t:'lock',id,what:'mic',on:!u.micLocked});
+  else if(a==='cam')send({t:'lock',id,what:'cam',on:!u.camLocked});
+  else if(a==='rename'){const n=prompt('New name',u.name);if(n)send({t:'rename',id,name:n})}
+  else if(a==='crown'){if(confirm(`Make ${u.name} the owner? You lose admin powers.`))send({t:'makeowner',id})}
+  else if(a==='kick'){if(confirm(`Kick ${u.name}?`))send({t:'kick',id})}
+});
+$('#adminBody').addEventListener('keydown',e=>{if(e.target.id==='ann'&&e.key==='Enter'&&e.target.value.trim()){send({t:'announce',text:e.target.value});e.target.value=''}});
+
+/* ---------- pirate filter ---------- */
+const pirate={on:false};
+let detector=null,loading=null;
+function loadDetector(){
+  if(loading)return loading;
+  return loading=(async()=>{
+    const V='https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14';
+    const {FaceDetector,FilesetResolver}=await import(V);
+    const fs=await FilesetResolver.forVisionTasks(V+'/wasm');
+    detector=await FaceDetector.createFromOptions(fs,{baseOptions:{modelAssetPath:'https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite'},runningMode:'VIDEO'});
+  })().catch(e=>{loading=null;console.warn('pirate model failed',e);toast('Pirate face tracking failed to load')});
+}
+const videoSenders=fn=>peers.forEach(({pc})=>pc.getSenders().forEach(s=>{if(s.track&&s.track.kind==='video')fn(s)}));
+async function startPirate(manual,quiet){
+  const orig=track('video');
+  if(!orig||!orig.enabled){if(manual)toast('Turn your camera on first 🏴‍☠️');return}
+  clearTimeout(pirate.timer);pirate.timer=setTimeout(stopPirate,30000);
+  if(pirate.on)return;
+  pirate.on=true;$('#pirateBtn').classList.add('on');loadDetector();
+  if(!quiet)send({t:'chat',text:'🏴‍☠️ Arrr! I be a pirate now!'});
+  const st=orig.getSettings(),W=st.width||640,H=st.height||480;
+  const pv=document.createElement('video');pv.muted=true;pv.playsInline=true;pv.srcObject=new MediaStream([orig]);
+  try{await pv.play()}catch{}
+  const cv=document.createElement('canvas');cv.width=W;cv.height=H;const cx=cv.getContext('2d');
+  pirate.out=cv.captureStream(24).getVideoTracks()[0];
+  videoSenders(s=>s.replaceTrack(pirate.out));
+  myTile.v.srcObject=new MediaStream([pirate.out]);
+  let f=null,miss=0;
+  pirate.loop=setInterval(()=>{
+    cx.drawImage(pv,0,0,W,H);
+    if(!detector||pv.readyState<2)return;
+    let d;try{d=detector.detectForVideo(pv,performance.now()).detections[0]}catch{return}
+    if(d){
+      miss=0;const k=d.keypoints.map(p=>({x:p.x*W,y:p.y*H})),a=Math.atan2(k[1].y-k[0].y,k[1].x-k[0].x);
+      const mx=(k[0].x+k[1].x)/2,my=(k[0].y+k[1].y)/2,dx=k[3].x-mx,dy=k[3].y-my;
+      const n={mx,my,a,w:d.boundingBox.width,mouth:-dx*Math.sin(a)+dy*Math.cos(a),eye:Math.hypot(k[1].x-k[0].x,k[1].y-k[0].y)/2};
+      f=f?Object.fromEntries(Object.keys(n).map(i=>[i,f[i]+(n[i]-f[i])*.5])):n;
+    }else if(++miss>10)f=null;
+    if(f)drawPirate(cx,f);
+  },50);
+}
+function stopPirate(){
+  if(!pirate.on)return;pirate.on=false;clearInterval(pirate.loop);clearTimeout(pirate.timer);
+  const o=track('video');videoSenders(s=>s.replaceTrack(o));
+  myTile.v.srcObject=local;pirate.out&&pirate.out.stop();$('#pirateBtn').classList.remove('on');
+}
+function drawPirate(c,f){
+  const w=f.w,m=f.mouth,ex=-f.eye,el=(x,y,rx,ry,r)=>{c.beginPath();c.ellipse(x,y,rx,ry,r,0,7);c.fill()};
+  c.save();c.translate(f.mx,f.my);c.rotate(f.a);
+  /* beard + moustache */
+  c.fillStyle='#5a3a22';c.beginPath();c.moveTo(-.52*w,.05*w);
+  c.quadraticCurveTo(-.6*w,m+.5*w,0,m+.62*w);c.quadraticCurveTo(.6*w,m+.5*w,.52*w,.05*w);
+  c.quadraticCurveTo(.3*w,m-.18*w,0,m-.12*w);c.quadraticCurveTo(-.3*w,m-.18*w,-.52*w,.05*w);c.closePath();
+  c.moveTo(.17*w,m);c.ellipse(0,m,.17*w,.06*w,0,0,Math.PI*2);c.fill('evenodd');
+  el(-.11*w,m-.09*w,.13*w,.05*w,.25);el(.11*w,m-.09*w,.13*w,.05*w,-.25);
+  /* eyepatch */
+  c.strokeStyle='#15121f';c.lineWidth=.035*w;c.beginPath();
+  c.moveTo(ex,0);c.lineTo(-.62*w,-.2*w);c.moveTo(ex,0);c.lineTo(.62*w,-.3*w);c.stroke();
+  c.fillStyle='#15121f';el(ex,0,.14*w,.11*w,-.3);
+  /* hat */
+  c.translate(0,-.38*w);c.fillStyle='#15121f';
+  c.beginPath();c.moveTo(-.78*w,.08*w);c.quadraticCurveTo(0,-.3*w,.78*w,.08*w);c.quadraticCurveTo(0,.16*w,-.78*w,.08*w);c.fill();
+  c.beginPath();c.moveTo(-.5*w,0);c.quadraticCurveTo(-.45*w,-.6*w,0,-.62*w);c.quadraticCurveTo(.45*w,-.6*w,.5*w,0);c.closePath();c.fill();
+  c.fillStyle='#ffd24a';c.fillRect(-.47*w,-.1*w,.94*w,.06*w);
+  c.fillStyle='#fff';el(0,-.4*w,.09*w,.09*w,0);
+  c.strokeStyle='#fff';c.lineWidth=.03*w;c.lineCap='round';c.beginPath();
+  c.moveTo(-.14*w,-.27*w);c.lineTo(.14*w,-.15*w);c.moveTo(.14*w,-.27*w);c.lineTo(-.14*w,-.15*w);c.stroke();
+  c.restore();
+}
+/* say "pirate" (Chrome, Edge, Safari) or tap the 🏴‍☠️ button */
+function listen(){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR)return;
+  const r=new SR();r.continuous=true;r.interimResults=true;r.lang='en-US';
+  r.onresult=e=>{for(let i=e.resultIndex;i<e.results.length;i++)
+    if(/\bpirates?\b/i.test(e.results[i][0].transcript)){const t=track('audio');if(t&&t.enabled)startPirate(false)}};
+  r.onend=()=>{if(!left)setTimeout(()=>{try{r.start()}catch{}},300)};
+  r.onerror=e=>{if(e.error==='not-allowed'||e.error==='service-not-allowed')r.onend=null};
+  try{r.start()}catch{}
+  setTimeout(()=>toast('Psst… try saying PIRATE 🏴‍☠️'),1500);
+}
+$('#pirateBtn').onclick=()=>pirate.on?stopPirate():startPirate(true);
+
+/* ---------- effects ---------- */
+function banner(t){const b=$('#banner');b.textContent=t;b.style.display='block';clearTimeout(b.t);b.t=setTimeout(()=>b.style.display='none',5000)}
+function rain(list,n=70){for(let i=0;i<n;i++){const s=document.createElement('div');s.className='fall';s.textContent=list[i%list.length];
+  s.style.left=Math.random()*100+'vw';s.style.fontSize=20+Math.random()*30+'px';s.style.animationDuration=2+Math.random()*3+'s';s.style.animationDelay=Math.random()*1.5+'s';
+  document.body.appendChild(s);setTimeout(()=>s.remove(),6000)}}
+function cls(c,ms){document.body.classList.add(c);setTimeout(()=>document.body.classList.remove(c),ms)}
+function fx(n,a){
+  if(n==='pirate'){startPirate(false,true);banner('🏴‍☠️ ARRR! Everyone be pirates!')}
+  else if(n==='confetti')rain(['🎉','🎊','✨','🥳']);
+  else if(n==='rain')rain([a||'🍕']);
+  else if(n==='shake')cls('shake',2200);
+  else if(n==='disco')cls('disco',9000);
+  else if(n==='spin')cls('spin',1300);
+  else if(n==='flip')cls('flip',6000);
+  else if(n==='party'){rain(['🎉','🪩','🎈','🍾'],100);cls('disco',9000)}
+}
+let tt;function toast(t){clearTimeout(tt);document.querySelectorAll('.toast').forEach(x=>x.remove());const d=document.createElement('div');d.className='toast';d.textContent=t;document.body.appendChild(d);tt=setTimeout(()=>d.remove(),2500)}
+</script></body></html>
